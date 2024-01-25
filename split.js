@@ -179,14 +179,12 @@ function handlePiece(source) {
 function createPiece(img, row, column, sizeX, sizeY) {
     var width = img.naturalWidth
     var height = img.naturalHeight
-    console.log('start', row, column)
     if (sizeX) {
         column = Math.ceil(width / sizeX)
     }
     if (sizeY) {
         row = Math.ceil(height / sizeY)
     }
-    console.log('final', row, column)
 
     row = util.val(row);
     column = util.val(column);
@@ -207,10 +205,6 @@ function createPiece(img, row, column, sizeX, sizeY) {
         html += '<tr>';
         
         for (var j = 0; j < column; j++) {
-            console.log(
-                j * wpiece, i * hpiece, wpiece, hpiece, 
-                0, 0, wpiece, hpiece
-            )
             ctx.drawImage(
                 img, 
                 j * wpiece, i * hpiece, wpiece, hpiece, 
