@@ -5,29 +5,18 @@
     <title>Split Images</title>
     <style>
         #preview {
-            min-width: 400px;
-            min-height: 200px;
             border: 2px dashed #dbdad7;
             display: flex;
             justify-content: center;
             align-items: center;
             color: #4a4a49;
             font-size: 32px;
-        }
-        #preview img {
-            width: 100%;
-            height: 100%;
+            padding: 10px;
         }
         body {
             background-image: url(./images/Purple.png);
         }
-        table {
-            border-collapse: collapse;
-        }
-        td, th {
-            padding: 0;
-        }
-        td img {
+        div img {
             display: block;
             padding: 2px;
             border: 1px solid #ffd48d;
@@ -86,8 +75,12 @@
     <div id='preview'>Try to drag an image here</div>
 
     <h2>Image Split Pieces</h2>
-    <h4>You can download these images by some Chrome extensions (eg. <a target="_blank" href="https://chromewebstore.google.com/detail/image-downloader-imageye/agionbommeaifngbhincahgmoflcikhm">Image downloader</a>)</h4>
+    <!-- <h4>You can download these images by some Chrome extensions (eg. <a target="_blank" href="https://chromewebstore.google.com/detail/image-downloader-imageye/agionbommeaifngbhincahgmoflcikhm">Image downloader</a>)</h4> -->
     <div id='result'></div>
+    <div>
+        <input id="donwloadName" type="text" placeholder="name for pieces">
+        <button id="download">Download</button>
+    </div>
 
     <script src='split.js'></script>
 </body>

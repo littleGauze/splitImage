@@ -7,7 +7,7 @@
  * helper - 辅助函数
  *
  */
-var util = {
+const util = {
     $: function (id) {
         return typeof id == 'string' ? document.getElementById(id) : null;
     },
@@ -33,14 +33,14 @@ function handleFile(file) {
     // 从其他页面拖拽图片，获取url路径，可能是data:url或者普通的url
     // todo: 兼容性不好,仅chrome支持
     if (typeof file === 'string') {
-        var source = file.match(/src=(?:'|")(.+jpe?g|png|gif)/);
+        const source = file.match(/src=(?:'|")(.+jpe?g|png|gif)/);
 
         if (!source) {
             alert('图片格式不合法！请上传jpg, png, gif, jpeg格式的图片');
             return;
         }
 
-        var imgUrl = source[1];
+        const imgUrl = source[1];
 
         util.$('preview').innerHTML = '<img src="' + imgUrl + '" />';
 
@@ -66,7 +66,7 @@ function handleFile(file) {
      * @event
      * @param {Object} event
      */
-    var reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = function (event) {
         source = event.target.result;
         util.$('preview').innerHTML = '<img src="' + source + '" />';
@@ -80,13 +80,15 @@ function handleFile(file) {
  * 
  */
 function initFile() {
-    var previewDiv = util.$('preview');
-    var fileInput = util.$('imgFile');
-    
-    var row =  util.$('row');
-    var column =  util.$('column');
-    var sizeX =  util.$('sizeX');
-    var sizeY =  util.$('sizeY');
+    const previewDiv = util.$('preview');
+    const fileInput = util.$('imgFile');
+    const download = util.$('download');
+    const downloadName = util.$('donwloadName');
+
+    const row = util.$('row');
+    const column = util.$('column');
+    const sizeX = util.$('sizeX');
+    const sizeY = util.$('sizeY');
 
     previewDiv.ondragenter = function (event) {
         util.cancel(event);
@@ -103,10 +105,10 @@ function initFile() {
 
     previewDiv.ondrop = function (event) {
         util.cancel(event);
-        
-        var file = event.dataTransfer.files[0];
-        var html = event.dataTransfer.getData('text/html');
-        
+
+        const file = event.dataTransfer.files[0];
+        const html = event.dataTransfer.getData('text/html');
+
         this.style.borderColor = '#ffd48d';
 
         handleFile(file || html);
@@ -120,7 +122,7 @@ function initFile() {
     fileInput.onchange = function () {
         handleFile(this.files[0]);
     };
-    
+
     /**
      * 分割宫格行列数发生变化时触发
      * 
@@ -131,8 +133,17 @@ function initFile() {
     sizeX.onchange = updateRowColumn;
     sizeY.onchange = updateRowColumn;
 
+    // download
+    download.onclick = function () {
+        const name = downloadName.value || 'pice'
+        const images = document.querySelectorAll('img.piece')
+        images.forEach((img, i) => {
+            downloadImage(img.currentSrc, `${name}${i + 1}.png`)
+        })
+    }
+
     function updateRowColumn() {
-        var img = previewDiv.getElementsByTagName('img');
+        let img = previewDiv.getElementsByTagName('img');
 
         img = img ? img[0] : null;
         handlePiece(img);
@@ -148,14 +159,14 @@ function handlePiece(source) {
     if (!source) {
         return;
     }
-    var rowVal =  util.$('row').value;
-    var columnVal =  util.$('column').value;
-    var sizeX =  util.$('sizeX').value;
-    var sizeY =  util.$('sizeY').value;
+    const rowVal = util.$('row').value;
+    const columnVal = util.$('column').value;
+    const sizeX = util.$('sizeX').value;
+    const sizeY = util.$('sizeY').value;
 
     if (typeof source === 'string') {
-        var img = new Image();
-        
+        const img = new Image();
+
         img.onload = function () {
             util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY);
         };
@@ -177,8 +188,8 @@ function handlePiece(source) {
  * @param {number=} sizeY 分割块的高
  */
 function createPiece(img, row, column, sizeX, sizeY) {
-    var width = img.naturalWidth
-    var height = img.naturalHeight
+    const width = img.naturalWidth
+    const height = img.naturalHeight
     if (sizeX) {
         column = Math.ceil(width / sizeX)
     }
@@ -189,36 +200,63 @@ function createPiece(img, row, column, sizeX, sizeY) {
     row = util.val(row);
     column = util.val(column);
 
-    var canvas = document.createElement('canvas');
-    var ctx = canvas.getContext('2d');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
-    var wpiece = Math.floor(width / column);
-    var hpiece = Math.floor(height / row);
+    const wpiece = Math.floor(width / column);
+    const hpiece = Math.floor(height / row);
 
-    var src = '';
-    var html = '';
+    let src = '';
+    let html = '';
 
     canvas.width = wpiece;
     canvas.height = hpiece;
 
-    for (var i = 0; i < row; i++) {
-        html += '<tr>';
-        
-        for (var j = 0; j < column; j++) {
+    for (let i = 0; i < row; i++) {
+        html += '<div style="display:flex;margin:10px 0;">';
+
+        for (let j = 0; j < column; j++) {
             ctx.drawImage(
-                img, 
-                j * wpiece, i * hpiece, wpiece, hpiece, 
+                img,
+                j * wpiece, i * hpiece, wpiece, hpiece,
                 0, 0, wpiece, hpiece
             );
 
             src = canvas.toDataURL();
             ctx.clearRect(0, 0, wpiece, hpiece)
-            html += '<td><img src="' + src + '" /></td>';
+            html += '<div><img class="piece" src="' + src + '" /></div>';
         }
-        html += '</tr>';
+        html += '</div>';
     }
-    html = '<table>' + html + '</table>';
+    html = '<div>' + html + '</div>';
     return html;
 }
 
 window.onload = initFile;
+
+function dataURLtoBlob(data) {
+    const arr = data.split(',')
+    const mime = arr[0].match(/:(.*?);/)[1]
+    const bstr = atob(arr[1])
+    let n = bstr.length
+    const u8arr = new Uint8Array(n)
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n)
+    }
+    return new Blob([u8arr], { type: mime })
+}
+
+function downloadImage(data, name) {
+    const img = dataURLtoBlob(data)
+    const file = new File([img], name)
+    const a = document.createElement('a')
+    a.style.position = 'absolute'
+    a.style.zIndex = -1
+    a.download = file.name
+    const href = URL.createObjectURL(file)
+    a.href = href
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(href)
+}
