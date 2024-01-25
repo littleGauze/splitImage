@@ -98,7 +98,7 @@ function initFile() {
     };
 
     previewDiv.ondragleave = function () {
-        this.style.borderColor = '#00f';
+        this.style.borderColor = '#ffd48d';
     };
 
     previewDiv.ondrop = function (event) {
