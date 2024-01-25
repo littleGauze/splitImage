@@ -13,4 +13,4 @@ splitImage
 
 ##Demo
 
-Demo：[http://atwxp.github.io/splitImage](http://atwxp.github.io/splitImage)
+Demo：[http://littleGauze.github.io/splitImage](http://littleGauze.github.io/splitImage)
