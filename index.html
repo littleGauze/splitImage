@@ -2,16 +2,24 @@
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
-    <title>split images</title>
+    <title>Split Images</title>
     <style>
         #preview {
-            width: 400px;
-            height: 200px;
-            border: 2px dashed #00f;
+            min-width: 400px;
+            min-height: 200px;
+            border: 2px dashed #dbdad7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #4a4a49;
+            font-size: 32px;
         }
         #preview img {
             width: 100%;
             height: 100%;
+        }
+        body {
+            background-image: url(./images/Purple.png);
         }
         table {
             border-collapse: collapse;
@@ -22,28 +30,63 @@
         td img {
             display: block;
             padding: 2px;
-            background: #fff;
+            border: 1px solid #ffd48d;
+            margin: 0 4px;
+        }
+        h1, h2 {
+            color: #ffca73;
+        }
+        h4 {
+            color: #4a4a49;
+        }
+        h1 img {
+            position: relative;
+            top: 10px;
+            left: -10px;
+        }
+        div.mask {
+            z-index: -1;
+            background-color: rgba(0, 0, 0, .1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            filter: blur(10px);
         }
     </style>
 </head>
 <body>
-    <h1>Split Image Demo</h1>
-    <form action='#'>
+    <div class="mask"></div>
+    <h1>Split Image <img src="./images/Apple.gif"/></h1>
+    <form id="params" action='#'>
         <p>
             <label for='row'>Row: </label>
             <input type='number' id='row' name='row' min='0'>    
 
             <label for='column'>Column: </label>
             <input type='number' id='column' name='column' min='0'>
-
-            <input type='file' name='imgFile' id='imgFile'>
         </p>
+        <p>
+            <label for='row'>Size: </label>
+            <input type='number' id='sizeX' name='x' min='1'>    
+
+            <label for='column'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+            <input type='number' id='sizeY' name='y' min='1'>
+        </p>
+            <input type='file' name='imgFile' id='imgFile'>
+            <input type="reset"></input>
+        </.p>
+    </form>
+
+    <form action='#'>
     </form>
 
     <h2>Image Preview</h2>
-    <div id='preview'>try to drag an image here</div>
+    <div id='preview'>Try to drag an image here</div>
 
-    <h2>Image Split Piece</h2>
+    <h2>Image Split Pieces</h2>
+    <h4>You can download these images by some Chrome extensions (eg. <a target="_blank" href="https://chromewebstore.google.com/detail/image-downloader-imageye/agionbommeaifngbhincahgmoflcikhm">Image downloader</a>)</h4>
     <div id='result'></div>
 
     <script src='split.js'></script>

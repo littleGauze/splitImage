@@ -85,6 +85,8 @@ function initFile() {
     
     var row =  util.$('row');
     var column =  util.$('column');
+    var sizeX =  util.$('sizeX');
+    var sizeY =  util.$('sizeY');
 
     previewDiv.ondragenter = function (event) {
         util.cancel(event);
@@ -105,7 +107,7 @@ function initFile() {
         var file = event.dataTransfer.files[0];
         var html = event.dataTransfer.getData('text/html');
         
-        this.style.borderColor = '#00f';
+        this.style.borderColor = '#ffd48d';
 
         handleFile(file || html);
     };
@@ -126,6 +128,8 @@ function initFile() {
      */
     row.onchange = updateRowColumn;
     column.onchange = updateRowColumn;
+    sizeX.onchange = updateRowColumn;
+    sizeY.onchange = updateRowColumn;
 
     function updateRowColumn() {
         var img = previewDiv.getElementsByTagName('img');
@@ -146,18 +150,20 @@ function handlePiece(source) {
     }
     var rowVal =  util.$('row').value;
     var columnVal =  util.$('column').value;
-    
+    var sizeX =  util.$('sizeX').value;
+    var sizeY =  util.$('sizeY').value;
+
     if (typeof source === 'string') {
         var img = new Image();
         
         img.onload = function () {
-            util.$('result').innerHTML = createPiece(img, rowVal, columnVal);
+            util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY);
         };
 
         img.src = source;
     }
     else {
-        util.$('result').innerHTML = createPiece(source, rowVal, columnVal);
+        util.$('result').innerHTML = createPiece(source, rowVal, columnVal, sizeX, sizeY);
     }
 }
 
@@ -167,16 +173,29 @@ function handlePiece(source) {
  * @param {Image} img 
  * @param {number=} row 分割宫格的行数
  * @param {number=} column 分割宫格的列数
+ * @param {number=} sizeX 分割块的宽
+ * @param {number=} sizeY 分割块的高
  */
-function createPiece(img, row, column) {
+function createPiece(img, row, column, sizeX, sizeY) {
+    var width = img.naturalWidth
+    var height = img.naturalHeight
+    console.log('start', row, column)
+    if (sizeX) {
+        column = Math.ceil(width / sizeX)
+    }
+    if (sizeY) {
+        row = Math.ceil(height / sizeY)
+    }
+    console.log('final', row, column)
+
     row = util.val(row);
     column = util.val(column);
 
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
 
-    var wpiece = Math.floor(img.naturalWidth / column);
-    var hpiece = Math.floor(img.naturalHeight / row);
+    var wpiece = Math.floor(width / column);
+    var hpiece = Math.floor(height / row);
 
     var src = '';
     var html = '';
@@ -188,6 +207,10 @@ function createPiece(img, row, column) {
         html += '<tr>';
         
         for (var j = 0; j < column; j++) {
+            console.log(
+                j * wpiece, i * hpiece, wpiece, hpiece, 
+                0, 0, wpiece, hpiece
+            )
             ctx.drawImage(
                 img, 
                 j * wpiece, i * hpiece, wpiece, hpiece, 
@@ -195,6 +218,7 @@ function createPiece(img, row, column) {
             );
 
             src = canvas.toDataURL();
+            ctx.clearRect(0, 0, wpiece, hpiece)
             html += '<td><img src="' + src + '" /></td>';
         }
         html += '</tr>';
