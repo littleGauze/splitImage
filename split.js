@@ -89,6 +89,8 @@ function initFile() {
     const column = util.$('column');
     const sizeX = util.$('sizeX');
     const sizeY = util.$('sizeY');
+    const skipX = util.$('skipX');
+    const skipY = util.$('skipY');
 
     previewDiv.ondragenter = function (event) {
         util.cancel(event);
@@ -132,6 +134,8 @@ function initFile() {
     column.onchange = updateRowColumn;
     sizeX.onchange = updateRowColumn;
     sizeY.onchange = updateRowColumn;
+    skipX.onchange = updateRowColumn;
+    skipY.onchange = updateRowColumn;
 
     // download
     download.onclick = function () {
@@ -163,18 +167,20 @@ function handlePiece(source) {
     const columnVal = util.$('column').value;
     const sizeX = util.$('sizeX').value;
     const sizeY = util.$('sizeY').value;
+    const skipX = util.$('skipX').value;
+    const skipY = util.$('skipY').value;
 
     if (typeof source === 'string') {
         const img = new Image();
 
         img.onload = function () {
-            util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY);
+            util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY, skipX, skipY);
         };
 
         img.src = source;
     }
     else {
-        util.$('result').innerHTML = createPiece(source, rowVal, columnVal, sizeX, sizeY);
+        util.$('result').innerHTML = createPiece(source, rowVal, columnVal, sizeX, sizeY, skipX, skipY);
     }
 }
 
@@ -186,8 +192,10 @@ function handlePiece(source) {
  * @param {number=} column 分割宫格的列数
  * @param {number=} sizeX 分割块的宽
  * @param {number=} sizeY 分割块的高
+ * @param {number=} skipX 跳过多少列
+ * @param {number=} skipY 跳过多少行
  */
-function createPiece(img, row, column, sizeX, sizeY) {
+function createPiece(img, row, column, sizeX, sizeY， skipX, skipY) {
     const width = img.naturalWidth
     const height = img.naturalHeight
     if (sizeX) {
@@ -259,4 +267,5 @@ function downloadImage(data, name) {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(href)
+
 }
