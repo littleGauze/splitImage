@@ -70,7 +70,7 @@ function parseNameTemplate(template) {
 function generateFileName(namePattern, row, column, rowColumnMap) {
     if (!namePattern.hasPattern) {
         // 简单模式：直接使用 name + row-column
-        return `${namePattern.template}${row}-${column}.png`;
+        return `${namePattern.template}${column}.png`;
     }
     
     // 花括号模式：根据行号选择对应的后缀
