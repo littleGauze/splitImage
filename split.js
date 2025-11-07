@@ -64,13 +64,17 @@ function parseNameTemplate(template) {
  * @param {Object} namePattern 解析后的命名模板
  * @param {number} row 行号
  * @param {number} column 列号
- * @param {Object} rowColumnMap 行列计数器 {row: {columnIndex: number}}
+ * @param {Object} rowColumnMap 行列计数器 {row: {columnIndex: number}, global: number}
  * @returns {string} 生成的文件名
  */
 function generateFileName(namePattern, row, column, rowColumnMap) {
     if (!namePattern.hasPattern) {
-        // 简单模式：直接使用 name + row-column
-        return `${namePattern.template}${column}.png`;
+        // 简单模式：使用全局计数器
+        if (!rowColumnMap.global) {
+            rowColumnMap.global = 0;
+        }
+        rowColumnMap.global++;
+        return `${namePattern.template}${rowColumnMap.global}.png`;
     }
     
     // 花括号模式：根据行号选择对应的后缀
@@ -150,6 +154,7 @@ function initFile() {
     const fileInput = util.$('imgFile');
     const download = util.$('download');
     const downloadName = util.$('donwloadName');
+    const showEmptyBlocks = util.$('showEmptyBlocks');
 
     const row = util.$('row');
     const column = util.$('column');
@@ -198,11 +203,13 @@ function initFile() {
     column.onchange = updateRowColumn;
     sizeX.onchange = updateRowColumn;
     sizeY.onchange = updateRowColumn;
+    showEmptyBlocks.onchange = updateRowColumn;
 
     // download
     download.onclick = async function () {
         const name = downloadName.value || 'pice'
         const images = document.querySelectorAll('img.piece')
+        const showEmptyBlocks = util.$('showEmptyBlocks').checked;
         
         // 解析命名模板
         const namePattern = parseNameTemplate(name);
@@ -218,15 +225,16 @@ function initFile() {
         console.log('=== 开始智能下载 ===');
         console.log(`总图片数: ${images.length}`);
         console.log(`命名模板: ${name}`);
+        console.log(`下载空白区块: ${showEmptyBlocks ? '是' : '否'}`);
         if (namePattern.hasPattern) {
             console.log(`识别到花括号模式:`);
             console.log(`  前缀: "${namePattern.prefix}"`);
             console.log(`  行名称: [${namePattern.suffixes.join(', ')}]`);
             console.log(`  后缀: "${namePattern.postfix}"`);
         }
-        console.log(`正在检测非空区块...\n`);
+        console.log(`正在检测图片...\n`);
         
-        // 第一步：检测所有有效图片
+        // 第一步：检测所有图片
         images.forEach((img) => {
             const index = img.dataset.index;
             const [rowStr, columnStr] = index.split('-');
@@ -234,29 +242,35 @@ function initFile() {
             const column = parseInt(columnStr);
             
             // 检查图片是否为空（无有效像素）
-            if (isImageEmpty(img)) {
+            const isEmpty = isImageEmpty(img);
+            
+            // 如果未勾选"显示空白区块"，则跳过空白图片
+            if (!showEmptyBlocks && isEmpty) {
                 skippedCount++;
                 console.log(`跳过: ${row}-${column} (空白区块)`);
                 return
             }
             
-            validImages.push({ img, row, column });
+            validImages.push({ img, row, column, isEmpty });
         })
         
-        console.log(`\n找到 ${validImages.length} 张有效图片，开始下载...\n`);
+        const emptyCount = validImages.filter(item => item.isEmpty).length;
+        const contentCount = validImages.length - emptyCount;
+        console.log(`\n找到 ${validImages.length} 张图片（有效: ${contentCount}，空白: ${emptyCount}），开始下载...\n`);
         
         // 行列计数器，用于生成连续编号
         const rowColumnMap = {};
         
         // 第二步：延迟下载，避免浏览器限制
         for (let i = 0; i < validImages.length; i++) {
-            const { img, row, column } = validImages[i];
+            const { img, row, column, isEmpty } = validImages[i];
             
             // 根据模板生成文件名
             const fileName = generateFileName(namePattern, row, column, rowColumnMap);
             
             downloadCount++;
-            console.log(`[${downloadCount}/${validImages.length}] 下载: ${row}-${column} => ${fileName}`);
+            const typeLabel = isEmpty ? '(空白)' : '(有效内容)';
+            console.log(`[${downloadCount}/${validImages.length}] 下载: ${row}-${column} => ${fileName} ${typeLabel}`);
             
             // 更新按钮文本显示进度
             download.textContent = `下载中 ${downloadCount}/${validImages.length}...`;
@@ -270,8 +284,10 @@ function initFile() {
         }
         
         console.log('\n=== 下载完成 ===');
-        console.log(`成功下载: ${downloadCount}张 (有效内容)`);
-        console.log(`跳过: ${skippedCount}张 (空白区块)`);
+        console.log(`成功下载: ${downloadCount}张`);
+        if (!showEmptyBlocks) {
+            console.log(`跳过: ${skippedCount}张 (空白区块)`);
+        }
         console.log(`总计: ${images.length}张`);
         
         // 恢复下载按钮
@@ -300,18 +316,19 @@ function handlePiece(source) {
     const columnVal = util.$('column').value;
     const sizeX = util.$('sizeX').value;
     const sizeY = util.$('sizeY').value;
+    const showEmptyBlocks = util.$('showEmptyBlocks').checked;
 
     if (typeof source === 'string') {
         const img = new Image();
 
         img.onload = function () {
-            util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY);
+            util.$('result').innerHTML = createPiece(img, rowVal, columnVal, sizeX, sizeY, showEmptyBlocks);
         };
 
         img.src = source;
     }
     else {
-        util.$('result').innerHTML = createPiece(source, rowVal, columnVal, sizeX, sizeY);
+        util.$('result').innerHTML = createPiece(source, rowVal, columnVal, sizeX, sizeY, showEmptyBlocks);
     }
 }
 
@@ -323,8 +340,9 @@ function handlePiece(source) {
  * @param {number=} column 分割宫格的列数
  * @param {number=} sizeX 分割块的宽
  * @param {number=} sizeY 分割块的高
+ * @param {boolean=} showEmptyBlocks 是否显示空白区块，默认false
  */
-function createPiece(img, row, column, sizeX, sizeY) {
+function createPiece(img, row, column, sizeX, sizeY, showEmptyBlocks = false) {
     const width = img.naturalWidth
     const height = img.naturalHeight
     if (sizeX) {
@@ -360,8 +378,19 @@ function createPiece(img, row, column, sizeX, sizeY) {
             );
 
             src = canvas.toDataURL();
-            ctx.clearRect(0, 0, wpiece, hpiece)
-            html += '<div><img data-index="' + (i+1) + '-' + (j+1) + '" class="piece" src="' + src + '" /></div>';
+            
+            // 检查是否为空白区块（在清空前检测）
+            const isEmpty = isImageEmptyByDataURL(ctx, wpiece, hpiece);
+            
+            ctx.clearRect(0, 0, wpiece, hpiece);
+            
+            // 根据showEmptyBlocks决定是否显示空白区块
+            if (showEmptyBlocks || !isEmpty) {
+                html += '<div><img data-index="' + (i+1) + '-' + (j+1) + '" class="piece" src="' + src + '" /></div>';
+            } else {
+                // 不显示但保留占位，便于布局
+                html += '<div style="opacity:0.1;"><img data-index="' + (i+1) + '-' + (j+1) + '" class="piece" src="' + src + '" /></div>';
+            }
         }
         html += '</div>';
     }
@@ -370,6 +399,75 @@ function createPiece(img, row, column, sizeX, sizeY) {
 }
 
 window.onload = initFile;
+
+/**
+ * 从Canvas上下文直接检测图片是否为空
+ * @param {CanvasRenderingContext2D} ctx canvas上下文
+ * @param {number} width 宽度
+ * @param {number} height 高度
+ * @returns {boolean} true表示图片为空，false表示有内容
+ */
+function isImageEmptyByDataURL(ctx, width, height) {
+    try {
+        // 获取像素数据
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const pixels = imageData.data;
+        
+        let transparentCount = 0;
+        let visibleCount = 0;
+        let firstVisibleColor = null;
+        let colorVariationCount = 0;
+        
+        const totalPixels = pixels.length / 4;
+        const threshold = 10;
+        
+        for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i];
+            const g = pixels[i + 1];
+            const b = pixels[i + 2];
+            const a = pixels[i + 3];
+            
+            if (a <= threshold) {
+                transparentCount++;
+            } else {
+                visibleCount++;
+                
+                if (firstVisibleColor === null) {
+                    firstVisibleColor = { r, g, b };
+                } else {
+                    if (Math.abs(r - firstVisibleColor.r) > 5 || 
+                        Math.abs(g - firstVisibleColor.g) > 5 || 
+                        Math.abs(b - firstVisibleColor.b) > 5) {
+                        colorVariationCount++;
+                    }
+                }
+            }
+        }
+        
+        // 判断逻辑
+        if (visibleCount === 0) {
+            return true;
+        }
+        
+        if (transparentCount > totalPixels * 0.1 && visibleCount > totalPixels * 0.05) {
+            return false;
+        }
+        
+        if (colorVariationCount > visibleCount * 0.1) {
+            return false;
+        }
+        
+        if (visibleCount > totalPixels * 0.95 && colorVariationCount < visibleCount * 0.05) {
+            return true;
+        }
+        
+        return false;
+        
+    } catch (e) {
+        console.error('检测图片时出错:', e);
+        return false;
+    }
+}
 
 /**
  * 检测图片是否为空（无有效像素内容）
