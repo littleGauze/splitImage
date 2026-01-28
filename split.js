@@ -30,92 +30,116 @@ function sleep(ms) {
 
 /**
  * 解析命名模板
- * 支持格式：
- * 1. Walk_{Down,Up,Right,Left}_
- * 2. Slime_[Idle,Move,Dead]_{Up,Down,Left,Right}_
- * 3. Slime(1,2)_[Idle,Move,Dead]_{Up,Down,Left,Right}_
- * 小括号内按逗号分隔，作为最外层循环（种类）
- * 方括号内按逗号分隔，作为中层循环（状态）
- * 花括号内按逗号分隔，作为内层循环（方向）
+ * 支持所有可能的组合：
+ * 1. Slime(1,2)_[Idle,Move]_{Up,Down}_ - 三层：() [] {}
+ * 2. Slime(1,2)_[Idle,Move]_ - 两层：() []
+ * 3. Slime(1,2)_{Up,Down}_ - 两层：() {}
+ * 4. Slime_[Idle,Move]_{Up,Down}_ - 两层：[] {}
+ * 5. Slime(1,2)_ - 单层：()
+ * 6. Slime_[Idle,Move]_ - 单层：[]
+ * 7. Slime_{Up,Down}_ - 单层：{}
  * @param {string} template 命名模板
  * @returns {Object} 解析结果对象
  */
 function parseNameTemplate(template) {
-    // 检查三层嵌套：Slime(1,2)_[Idle,Move]_{Up,Down}_
+    // 1. 检查三层嵌套：() [] {}
     const tripleMatch = template.match(/^(.+?)\((.+?)\)(.+?)\[(.+?)\](.+?)\{(.+?)\}(.*)$/);
-    
     if (tripleMatch) {
-        const prefix = tripleMatch[1];           // Slime
-        const categoryContent = tripleMatch[2];   // 1,2
-        const middle1 = tripleMatch[3];           // _
-        const stateContent = tripleMatch[4];      // Idle,Move,Dead
-        const middle2 = tripleMatch[5];           // _
-        const directionContent = tripleMatch[6];  // Up,Down,Left,Right
-        const postfix = tripleMatch[7];           // _
-        
-        const categories = categoryContent.split(',').map(s => s.trim());
-        const states = stateContent.split(',').map(s => s.trim());
-        const directions = directionContent.split(',').map(s => s.trim());
-        
         return {
             hasPattern: true,
-            hasTriple: true,
-            prefix: prefix,
-            middle1: middle1,
-            middle2: middle2,
-            categories: categories,      // [1, 2]
-            states: states,              // [Idle, Move, Dead]
-            directions: directions,      // [Up, Down, Left, Right]
-            postfix: postfix
+            patternType: 'triple',
+            prefix: tripleMatch[1],
+            middle1: tripleMatch[3],
+            middle2: tripleMatch[5],
+            postfix: tripleMatch[7],
+            layer1: tripleMatch[2].split(',').map(s => s.trim()),  // ()
+            layer2: tripleMatch[4].split(',').map(s => s.trim()),  // []
+            layer3: tripleMatch[6].split(',').map(s => s.trim())   // {}
         };
     }
     
-    // 检查两层嵌套：Slime_[Idle,Move]_{Up,Down}_
-    const dualMatch = template.match(/^(.+?)\[(.+?)\](.+?)\{(.+?)\}(.*)$/);
-    
-    if (dualMatch) {
-        const prefix = dualMatch[1];           // Slime_
-        const outerContent = dualMatch[2];      // Idle,Move,Dead
-        const middle = dualMatch[3];            // _
-        const innerContent = dualMatch[4];      // Up,Down,Left,Right
-        const postfix = dualMatch[5];           // _
-        
-        const outerSuffixes = outerContent.split(',').map(s => s.trim());
-        const innerSuffixes = innerContent.split(',').map(s => s.trim());
-        
+    // 2. 检查两层嵌套：() []
+    const parenthesisBracketMatch = template.match(/^(.+?)\((.+?)\)(.+?)\[(.+?)\](.*)$/);
+    if (parenthesisBracketMatch) {
         return {
             hasPattern: true,
-            hasBracket: true,
-            prefix: prefix,
-            middle: middle,
-            outerSuffixes: outerSuffixes,  // [Idle, Move, Dead]
-            innerSuffixes: innerSuffixes,  // [Up, Down, Left, Right]
-            postfix: postfix
+            patternType: 'parenthesis-bracket',
+            prefix: parenthesisBracketMatch[1],
+            middle: parenthesisBracketMatch[3],
+            postfix: parenthesisBracketMatch[5],
+            layer1: parenthesisBracketMatch[2].split(',').map(s => s.trim()),  // ()
+            layer2: parenthesisBracketMatch[4].split(',').map(s => s.trim())   // []
         };
     }
     
-    // 只有花括号的情况：Walk_{Down,Up,Right,Left}_
-    const match = template.match(/^(.+?)\{(.+?)\}(.*)$/);
-    
-    if (!match) {
-        // 没有花括号模式，返回简单模式
+    // 3. 检查两层嵌套：() {}
+    const parenthesisBraceMatch = template.match(/^(.+?)\((.+?)\)(.+?)\{(.+?)\}(.*)$/);
+    if (parenthesisBraceMatch) {
         return {
-            hasPattern: false,
-            template: template
+            hasPattern: true,
+            patternType: 'parenthesis-brace',
+            prefix: parenthesisBraceMatch[1],
+            middle: parenthesisBraceMatch[3],
+            postfix: parenthesisBraceMatch[5],
+            layer1: parenthesisBraceMatch[2].split(',').map(s => s.trim()),  // ()
+            layer2: parenthesisBraceMatch[4].split(',').map(s => s.trim())   // {}
         };
     }
     
-    const prefix = match[1];  // Walk_
-    const content = match[2];  // Down,Up,Right,Left
-    const postfix = match[3];  // _
-    const suffixes = content.split(',').map(s => s.trim());
+    // 4. 检查两层嵌套：[] {}
+    const bracketBraceMatch = template.match(/^(.+?)\[(.+?)\](.+?)\{(.+?)\}(.*)$/);
+    if (bracketBraceMatch) {
+        return {
+            hasPattern: true,
+            patternType: 'bracket-brace',
+            prefix: bracketBraceMatch[1],
+            middle: bracketBraceMatch[3],
+            postfix: bracketBraceMatch[5],
+            layer1: bracketBraceMatch[2].split(',').map(s => s.trim()),  // []
+            layer2: bracketBraceMatch[4].split(',').map(s => s.trim())   // {}
+        };
+    }
     
+    // 5. 检查单层：()
+    const parenthesisMatch = template.match(/^(.+?)\((.+?)\)(.*)$/);
+    if (parenthesisMatch) {
+        return {
+            hasPattern: true,
+            patternType: 'parenthesis',
+            prefix: parenthesisMatch[1],
+            postfix: parenthesisMatch[3],
+            layer1: parenthesisMatch[2].split(',').map(s => s.trim())  // ()
+        };
+    }
+    
+    // 6. 检查单层：[]
+    const bracketMatch = template.match(/^(.+?)\[(.+?)\](.*)$/);
+    if (bracketMatch) {
+        return {
+            hasPattern: true,
+            patternType: 'bracket',
+            prefix: bracketMatch[1],
+            postfix: bracketMatch[3],
+            layer1: bracketMatch[2].split(',').map(s => s.trim())  // []
+        };
+    }
+    
+    // 7. 检查单层：{}
+    const braceMatch = template.match(/^(.+?)\{(.+?)\}(.*)$/);
+    if (braceMatch) {
+        return {
+            hasPattern: true,
+            patternType: 'brace',
+            prefix: braceMatch[1],
+            postfix: braceMatch[3],
+            layer1: braceMatch[2].split(',').map(s => s.trim())  // {}
+        };
+    }
+    
+    // 没有任何模式，返回简单模式
     return {
-        hasPattern: true,
-        hasBracket: false,
-        prefix: prefix,
-        suffixes: suffixes,
-        postfix: postfix
+        hasPattern: false,
+        template: template
     };
 }
 
@@ -128,6 +152,13 @@ function parseNameTemplate(template) {
  * @returns {string} 生成的文件名
  */
 function generateFileName(namePattern, row, column, rowColumnMap) {
+    // 获取该行的列计数（从1开始）
+    if (!rowColumnMap[row]) {
+        rowColumnMap[row] = { count: 0 };
+    }
+    rowColumnMap[row].count++;
+    const colIndex = rowColumnMap[row].count;
+    
     if (!namePattern.hasPattern) {
         // 简单模式：使用全局计数器
         if (!rowColumnMap.global) {
@@ -137,70 +168,62 @@ function generateFileName(namePattern, row, column, rowColumnMap) {
         return `${namePattern.template}${rowColumnMap.global}.png`;
     }
     
-    // 三层嵌套模式：Slime(1,2)_[Idle,Move]_{Up,Down}_
-    if (namePattern.hasTriple) {
-        const rowIndex = row - 1;  // 转为0基索引
-        const directionCount = namePattern.directions.length;
-        const stateCount = namePattern.states.length;
-        const rowsPerCategory = stateCount * directionCount;  // 每个种类需要的行数
-        
-        // 计算三层索引
-        // 例如：2个种类，3个状态，4个方向
-        // 行0-11: 种类0 (行0-3: 状态0, 行4-7: 状态1, 行8-11: 状态2)
-        // 行12-23: 种类1 (行12-15: 状态0, 行16-19: 状态1, 行20-23: 状态2)
-        const categoryIndex = Math.floor(rowIndex / rowsPerCategory) % namePattern.categories.length;
-        const remainingRows = rowIndex % rowsPerCategory;
-        const stateIndex = Math.floor(remainingRows / directionCount);
-        const directionIndex = remainingRows % directionCount;
-        
-        const category = namePattern.categories[categoryIndex];
-        const state = namePattern.states[stateIndex];
-        const direction = namePattern.directions[directionIndex];
-        
-        // 获取该行的列计数（从1开始）
-        if (!rowColumnMap[row]) {
-            rowColumnMap[row] = { count: 0 };
-        }
-        rowColumnMap[row].count++;
-        
-        return `${namePattern.prefix}${category}${namePattern.middle1}${state}${namePattern.middle2}${direction}${namePattern.postfix}${rowColumnMap[row].count}.png`;
-    }
-    
-    // 方括号+花括号模式：Slime_[Idle,Move]_{Up,Down}_
-    if (namePattern.hasBracket) {
-        const rowIndex = row - 1;  // 转为0基索引
-        const innerCount = namePattern.innerSuffixes.length;
-        
-        // 计算外层（方括号）和内层（花括号）的索引
-        // 例如：3个外层选项，4个内层选项
-        // 行1-4: 外层0(Idle) + 内层0-3(Up,Down,Left,Right)
-        // 行5-8: 外层1(Move) + 内层0-3(Up,Down,Left,Right)
-        const outerIndex = Math.floor(rowIndex / innerCount) % namePattern.outerSuffixes.length;
-        const innerIndex = rowIndex % innerCount;
-        
-        const outerSuffix = namePattern.outerSuffixes[outerIndex];
-        const innerSuffix = namePattern.innerSuffixes[innerIndex];
-        
-        // 获取该行的列计数（从1开始）
-        if (!rowColumnMap[row]) {
-            rowColumnMap[row] = { count: 0 };
-        }
-        rowColumnMap[row].count++;
-        
-        return `${namePattern.prefix}${outerSuffix}${namePattern.middle}${innerSuffix}${namePattern.postfix}${rowColumnMap[row].count}.png`;
-    }
-    
-    // 花括号模式：根据行号选择对应的后缀
     const rowIndex = row - 1;  // 转为0基索引
-    const suffix = namePattern.suffixes[rowIndex % namePattern.suffixes.length];
     
-    // 获取该行的列计数（从1开始）
-    if (!rowColumnMap[row]) {
-        rowColumnMap[row] = { count: 0 };
+    // 根据不同的模式类型生成文件名
+    switch (namePattern.patternType) {
+        case 'triple': {
+            // 三层：() [] {}
+            const layer3Count = namePattern.layer3.length;
+            const layer2Count = namePattern.layer2.length;
+            const rowsPerLayer1 = layer2Count * layer3Count;
+            
+            const idx1 = Math.floor(rowIndex / rowsPerLayer1) % namePattern.layer1.length;
+            const remaining = rowIndex % rowsPerLayer1;
+            const idx2 = Math.floor(remaining / layer3Count);
+            const idx3 = remaining % layer3Count;
+            
+            return `${namePattern.prefix}${namePattern.layer1[idx1]}${namePattern.middle1}${namePattern.layer2[idx2]}${namePattern.middle2}${namePattern.layer3[idx3]}${namePattern.postfix}${colIndex}.png`;
+        }
+        
+        case 'parenthesis-bracket': {
+            // 两层：() []
+            const layer2Count = namePattern.layer2.length;
+            const idx1 = Math.floor(rowIndex / layer2Count) % namePattern.layer1.length;
+            const idx2 = rowIndex % layer2Count;
+            
+            return `${namePattern.prefix}${namePattern.layer1[idx1]}${namePattern.middle}${namePattern.layer2[idx2]}${namePattern.postfix}${colIndex}.png`;
+        }
+        
+        case 'parenthesis-brace': {
+            // 两层：() {}
+            const layer2Count = namePattern.layer2.length;
+            const idx1 = Math.floor(rowIndex / layer2Count) % namePattern.layer1.length;
+            const idx2 = rowIndex % layer2Count;
+            
+            return `${namePattern.prefix}${namePattern.layer1[idx1]}${namePattern.middle}${namePattern.layer2[idx2]}${namePattern.postfix}${colIndex}.png`;
+        }
+        
+        case 'bracket-brace': {
+            // 两层：[] {}
+            const layer2Count = namePattern.layer2.length;
+            const idx1 = Math.floor(rowIndex / layer2Count) % namePattern.layer1.length;
+            const idx2 = rowIndex % layer2Count;
+            
+            return `${namePattern.prefix}${namePattern.layer1[idx1]}${namePattern.middle}${namePattern.layer2[idx2]}${namePattern.postfix}${colIndex}.png`;
+        }
+        
+        case 'parenthesis':
+        case 'bracket':
+        case 'brace': {
+            // 单层：() 或 [] 或 {}
+            const idx = rowIndex % namePattern.layer1.length;
+            return `${namePattern.prefix}${namePattern.layer1[idx]}${namePattern.postfix}${colIndex}.png`;
+        }
+        
+        default:
+            return `unknown_${row}_${colIndex}.png`;
     }
-    rowColumnMap[row].count++;
-    
-    return `${namePattern.prefix}${suffix}${namePattern.postfix}${rowColumnMap[row].count}.png`;
 }
 
 /**
@@ -339,33 +362,78 @@ function initFile() {
         console.log(`总图片数: ${images.length}`);
         console.log(`命名模板: ${name}`);
         console.log(`下载空白区块: ${showEmptyBlocks ? '是' : '否'}`);
+        
         if (namePattern.hasPattern) {
-            if (namePattern.hasTriple) {
-                console.log(`识别到三层嵌套模式 (小括号+方括号+花括号):`);
-                console.log(`  前缀: "${namePattern.prefix}"`);
-                console.log(`  种类(小括号): [${namePattern.categories.join(', ')}]`);
-                console.log(`  中间部分1: "${namePattern.middle1}"`);
-                console.log(`  状态(方括号): [${namePattern.states.join(', ')}]`);
-                console.log(`  中间部分2: "${namePattern.middle2}"`);
-                console.log(`  方向(花括号): [${namePattern.directions.join(', ')}]`);
-                console.log(`  后缀: "${namePattern.postfix}"`);
-                const rowsPerCategory = namePattern.states.length * namePattern.directions.length;
-                console.log(`  循环规则: 每${namePattern.directions.length}行切换状态, 每${rowsPerCategory}行切换种类`);
-            } else if (namePattern.hasBracket) {
-                console.log(`识别到方括号+花括号模式:`);
-                console.log(`  前缀: "${namePattern.prefix}"`);
-                console.log(`  外层选项(方括号): [${namePattern.outerSuffixes.join(', ')}]`);
-                console.log(`  中间部分: "${namePattern.middle}"`);
-                console.log(`  内层选项(花括号): [${namePattern.innerSuffixes.join(', ')}]`);
-                console.log(`  后缀: "${namePattern.postfix}"`);
-                console.log(`  循环规则: 每${namePattern.innerSuffixes.length}行切换一次外层选项`);
-            } else {
-                console.log(`识别到花括号模式:`);
-                console.log(`  前缀: "${namePattern.prefix}"`);
-                console.log(`  行名称: [${namePattern.suffixes.join(', ')}]`);
-                console.log(`  后缀: "${namePattern.postfix}"`);
+            switch (namePattern.patternType) {
+                case 'triple':
+                    console.log(`识别到三层嵌套模式 () [] {}:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  第1层(小括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  中间部分1: "${namePattern.middle1}"`);
+                    console.log(`  第2层(方括号): [${namePattern.layer2.join(', ')}]`);
+                    console.log(`  中间部分2: "${namePattern.middle2}"`);
+                    console.log(`  第3层(花括号): [${namePattern.layer3.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    const rowsPerLayer1 = namePattern.layer2.length * namePattern.layer3.length;
+                    console.log(`  循环规则: 每${namePattern.layer3.length}行切换第2层, 每${rowsPerLayer1}行切换第1层`);
+                    break;
+                
+                case 'parenthesis-bracket':
+                    console.log(`识别到两层嵌套模式 () []:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  第1层(小括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  中间部分: "${namePattern.middle}"`);
+                    console.log(`  第2层(方括号): [${namePattern.layer2.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每${namePattern.layer2.length}行切换第1层`);
+                    break;
+                
+                case 'parenthesis-brace':
+                    console.log(`识别到两层嵌套模式 () {}:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  第1层(小括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  中间部分: "${namePattern.middle}"`);
+                    console.log(`  第2层(花括号): [${namePattern.layer2.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每${namePattern.layer2.length}行切换第1层`);
+                    break;
+                
+                case 'bracket-brace':
+                    console.log(`识别到两层嵌套模式 [] {}:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  第1层(方括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  中间部分: "${namePattern.middle}"`);
+                    console.log(`  第2层(花括号): [${namePattern.layer2.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每${namePattern.layer2.length}行切换第1层`);
+                    break;
+                
+                case 'parenthesis':
+                    console.log(`识别到单层模式 ():`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  选项(小括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每行按顺序使用不同选项`);
+                    break;
+                
+                case 'bracket':
+                    console.log(`识别到单层模式 []:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  选项(方括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每行按顺序使用不同选项`);
+                    break;
+                
+                case 'brace':
+                    console.log(`识别到单层模式 {}:`);
+                    console.log(`  前缀: "${namePattern.prefix}"`);
+                    console.log(`  选项(花括号): [${namePattern.layer1.join(', ')}]`);
+                    console.log(`  后缀: "${namePattern.postfix}"`);
+                    console.log(`  循环规则: 每行按顺序使用不同选项`);
+                    break;
             }
         }
+        
         console.log(`正在检测图片...\n`);
         
         // 第一步：检测所有图片
